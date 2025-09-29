@@ -1,12 +1,13 @@
 import express from "express"
-import { Fileupload, Login, RegisterLogic } from "../Controllers/userlogic.js";
+import { Fileupload, Getdetails, Login, RegisterLogic } from "../Controllers/userlogic.js";
+import { verifyToken } from "../Auth/Verifytoken.js";
+import multer from "multer";
 
 const upload = multer({ 
-  storage: multer.memoryStorage(), 
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 } 
 });
 
-import multer from "multer";
 
 const router = express.Router();
 
@@ -14,7 +15,9 @@ router.post("/register",RegisterLogic);
 router.post("/login",Login)
 
 
-router.post('/profile', upload.single('myfile'),Fileupload  );
+router.post('/profile', verifyToken,upload.single('myfile'),Fileupload  );
+
+router.get("/resume",verifyToken,Getdetails)
 
 
 

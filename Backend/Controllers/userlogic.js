@@ -1,10 +1,14 @@
 import User from "../Schema/userschema.js";
 import bcrypt from "bcrypt";
 import { v2 as cloudinary } from "cloudinary";
-// import pdfParse from "pdf-parse";
+import textract from "textract";
 import dotenv from "dotenv";
+import jwt from 'jsonwebtoken'
+import OpenAI from "openai";
 dotenv.config();
-
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.CLOUD_API_KEY,
@@ -54,6 +58,23 @@ export const RegisterLogic= async(req,res)=>{
 }
 
 
+const generateAccessToken = (user) => {
+  return jwt.sign(
+    { id: user._id, role: user.role },
+    process.env.JWT_ACCESS_SECRET,
+    { expiresIn: process.env.JWT_ACCESS_EXPIRE }
+  );
+};
+
+const generateRefreshToken = (user) => {
+  return jwt.sign(
+    { id: user._id },
+    process.env.JWT_REFRESH_SECRET,
+    { expiresIn: process.env.JWT_REFRESH_EXPIRE }
+  );
+};
+
+
 
 
 export const Login=async(req,res)=>{
@@ -74,7 +95,23 @@ if(!MatchPassword){
 
 }
 
- res.status(200).json({message:"Login successful",email,password})
+ const accessToken = generateAccessToken(existuser);
+    const refreshToken = generateRefreshToken(existuser);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, 
+    });
+    await existuser.save();
+
+    res.status(200).json({
+      message: "Login successful",
+      accessToken,
+      refreshToken,
+    });
+
 
         
     } catch (error) {
@@ -83,14 +120,20 @@ if(!MatchPassword){
     }
 }
 
+
+
+
+
+
+
+
+
+
 export const Fileupload = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: "No file uploaded" });
-    }
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-    // let extractedText = "";
-    // if (req.file.mimetype === "application/pdf") {
+    // Upload resume to Cloudinary
     const uploadToCloudinary = (buffer) =>
       new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
@@ -100,29 +143,127 @@ export const Fileupload = async (req, res) => {
         stream.end(buffer);
       });
 
-    let uploadResult;
-    try {
-      uploadResult = await uploadToCloudinary(req.file.buffer);
-    } catch (err) {
-      console.error("Cloudinary upload error:", err);
-      return res.status(500).json({ message: "File upload failed", error: err.message });
-    }
+    const uploadResult = await uploadToCloudinary(req.file.buffer);
+
+    // Extract text using textract
+    const extractedText = await new Promise((resolve, reject) => {
+      textract.fromBufferWithMime(req.file.mimetype, req.file.buffer, (err, text) => {
+        if (err) reject(err);
+        else resolve(text);
+      });
+    });
+
+  
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    
+    const { position } = req.body;
+    if (!position) return res.status(400).json({ message: "Position is required" });
 
    
-    User.resume = {
+    const prompt = `
+You are a professional resume analyzer. Analyze the following resume text and provide:
+
+1. Skills (comma-separated)
+2. Experience summary
+3. Education summary
+4. Strengths
+5. Weaknesses
+6. ATS Score (0-100)
+7. Suggest relevant online courses or YouTube videos to improve weaknesses
+
+Resume Text:
+${extractedText}
+
+Desired Position: ${position}
+
+Return the result in JSON format like this:
+{
+  "skills": [],
+  "experience": "",
+  "education": "",
+  "strengths": [],
+  "weaknesses": [],
+  "atsScore": 0,
+  "suggestions": []
+}
+`;
+
+   
+    const aiResponse = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+    });
+
+    // Parse AI output
+    let aiData = {};
+    try {
+      aiData = JSON.parse(aiResponse.choices[0].message.content);
+    } catch (err) {
+      console.error("Error parsing AI response:", err);
+      aiData = {
+        skills: [],
+        experience: "",
+        education: "",
+        strengths: [],
+        weaknesses: [],
+        atsScore: 0,
+        suggestions: [],
+      };
+    }
+
+    // Save resume to user
+    if (!user.resumes) user.resumes = [];
+    user.resumes.push({
       fileName: req.file.originalname,
       fileUrl: uploadResult.secure_url,
-      uploadedAt: new Date(),
-    };
-    await User.save();
+      extractedText,
+      email: null,
+      phone: null,
+      skills: aiData.skills || [],
+      experience: aiData.experience || "",
+      education: aiData.education || "",
+      strengths: aiData.strengths || [],
+      weaknesses: aiData.weaknesses || [],
+      atsScore: aiData.atsScore || 0,
+      suggestions: aiData.suggestions || [],
+      position
+    });
+
+    await user.save();
 
     res.status(200).json({
-      message: "File uploaded successfully",
-      fileName: req.file.originalname,
-      fileUrl: uploadResult.secure_url,
+      message: "Resume uploaded and analyzed successfully",
+      resume: user.resumes[user.resumes.length - 1],
+    });
+
+  } catch (error) {
+    console.error("File upload error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+export const Getdetails = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+  
+    res.status(200).json({
+      message: "User resumes fetched successfully",
+      resumes: user.resumes || [],
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: error.message });
+    console.error("Error fetching user details:", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
