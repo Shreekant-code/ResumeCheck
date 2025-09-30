@@ -13,6 +13,7 @@ const resumeSchema = new mongoose.Schema({
   strengths: [String],
   weaknesses: [String],
   suggestions: [String],
+  youtubelink:[String],
   analyzedAt: { type: Date, default: Date.now }
 });
 

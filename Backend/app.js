@@ -3,12 +3,12 @@ import dbconnect from "./Database/dbconnect.js";
 import router from "./Router/router.js";
 import dotenv from 'dotenv'
 import cookieParser from "cookie-parser"
-
+dotenv.config();
 
 
 const app=express();
 
-dotenv.config();
+
 app.use(express.json());
 app.use(cookieParser())
 

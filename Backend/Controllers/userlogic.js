@@ -4,11 +4,10 @@ import { v2 as cloudinary } from "cloudinary";
 import textract from "textract";
 import dotenv from "dotenv";
 import jwt from 'jsonwebtoken'
-import OpenAI from "openai";
+
 dotenv.config();
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { analyzeResumeATS } from "./Aimodel.js";
+
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.CLOUD_API_KEY,
@@ -121,19 +120,11 @@ if(!MatchPassword){
 }
 
 
-
-
-
-
-
-
-
-
 export const Fileupload = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
-    // Upload resume to Cloudinary
+   
     const uploadToCloudinary = (buffer) =>
       new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
@@ -143,93 +134,55 @@ export const Fileupload = async (req, res) => {
         stream.end(buffer);
       });
 
-    const uploadResult = await uploadToCloudinary(req.file.buffer);
-
-    // Extract text using textract
-    const extractedText = await new Promise((resolve, reject) => {
-      textract.fromBufferWithMime(req.file.mimetype, req.file.buffer, (err, text) => {
-        if (err) reject(err);
-        else resolve(text);
-      });
-    });
+    let uploadResult;
+    try {
+      uploadResult = await uploadToCloudinary(req.file.buffer);
+    } catch (err) {
+      console.error("Cloudinary upload error:", err);
+      return res.status(500).json({ message: "Failed to upload resume" });
+    }
 
   
+    let extractedText;
+    try {
+      extractedText = await new Promise((resolve, reject) => {
+        textract.fromBufferWithMime(req.file.mimetype, req.file.buffer, (err, text) => {
+          if (err) reject(err);
+          else resolve(text.trim());
+        });
+      });
+    } catch (err) {
+      console.error("Text extraction error:", err);
+      return res.status(500).json({ message: "Failed to extract text from resume" });
+    }
+
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    
     const { position } = req.body;
     if (!position) return res.status(400).json({ message: "Position is required" });
 
    
-    const prompt = `
-You are a professional resume analyzer. Analyze the following resume text and provide:
+    const aiData = await analyzeResumeATS(extractedText, position);
 
-1. Skills (comma-separated)
-2. Experience summary
-3. Education summary
-4. Strengths
-5. Weaknesses
-6. ATS Score (0-100)
-7. Suggest relevant online courses or YouTube videos to improve weaknesses
-
-Resume Text:
-${extractedText}
-
-Desired Position: ${position}
-
-Return the result in JSON format like this:
-{
-  "skills": [],
-  "experience": "",
-  "education": "",
-  "strengths": [],
-  "weaknesses": [],
-  "atsScore": 0,
-  "suggestions": []
-}
-`;
-
-   
-    const aiResponse = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-    });
-
-    // Parse AI output
-    let aiData = {};
-    try {
-      aiData = JSON.parse(aiResponse.choices[0].message.content);
-    } catch (err) {
-      console.error("Error parsing AI response:", err);
-      aiData = {
-        skills: [],
-        experience: "",
-        education: "",
-        strengths: [],
-        weaknesses: [],
-        atsScore: 0,
-        suggestions: [],
-      };
-    }
-
-    // Save resume to user
+    
     if (!user.resumes) user.resumes = [];
     user.resumes.push({
       fileName: req.file.originalname,
       fileUrl: uploadResult.secure_url,
       extractedText,
-      email: null,
-      phone: null,
+      email: aiData.email || null,
+      phone: aiData.phone || null,
       skills: aiData.skills || [],
-      experience: aiData.experience || "",
+      experience: aiData.work_experience || aiData.experience || "",
       education: aiData.education || "",
       strengths: aiData.strengths || [],
       weaknesses: aiData.weaknesses || [],
       atsScore: aiData.atsScore || 0,
       suggestions: aiData.suggestions || [],
-      position
+      position,
+      youtubelink: aiData.youtubelink || [],
+      createdAt: new Date(),
     });
 
     await user.save();
@@ -238,29 +191,25 @@ Return the result in JSON format like this:
       message: "Resume uploaded and analyzed successfully",
       resume: user.resumes[user.resumes.length - 1],
     });
-
   } catch (error) {
     console.error("File upload error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-
+   
 export const Getdetails = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const user = await User.findById(req.user.id);
 
-    
-    const user = await User.findById(userId);
+    if (!user || !user.resumes || user.resumes.length === 0) 
+      return res.status(404).json({ message: "No resumes found" });
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const latestResume = user.resumes[user.resumes.length - 1]; // last uploaded
 
-  
     res.status(200).json({
-      message: "User resumes fetched successfully",
-      resumes: user.resumes || [],
+      message: "Latest resume fetched successfully",
+      resume: latestResume,
     });
   } catch (error) {
     console.error("Error fetching user details:", error);
