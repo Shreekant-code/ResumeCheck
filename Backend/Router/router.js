@@ -15,9 +15,30 @@ router.post("/register",RegisterLogic);
 router.post("/login",Login)
 
 
+
+
 router.post('/profile', verifyToken,upload.single('myfile'),Fileupload  );
 
 router.get("/resume",verifyToken,Getdetails)
+
+
+
+router.post("/refresh-token", (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken; 
+    if (!refreshToken) return res.sendStatus(401); 
+
+    jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+      if (err) return res.sendStatus(403); 
+
+      const accessToken = generateAccessToken({ id: user.id });
+      res.json({ accessToken });
+    });
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+});
 
 
 

@@ -1,10 +1,16 @@
-import { Header } from "./Components/Header"
+import {Home} from "./Components/Home"
+import {  Router, Routes, Route } from "react-router-dom";
 
 const App=()=>{
   return(
     <>
-    <Header />
-    
+
+
+  <Home />   
+
+  <Routes>
+    <Route path="/signup" element={<h1>Sign up form</h1>} />
+  </Routes>
     </>
   )
 }

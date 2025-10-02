@@ -14,11 +14,11 @@ cloudinary.config({
   api_secret: process.env.CLOUD_API_SECRET,
 });
 
-console.log({
-  cloud: process.env.CLOUD_NAME,
-  key: process.env.CLOUD_API_KEY,
-  secret: process.env.CLOUD_API_SECRET
-});
+// console.log({
+//   cloud: process.env.CLOUD_NAME,
+//   key: process.env.CLOUD_API_KEY,
+//   secret: process.env.CLOUD_API_SECRET
+// });
 
 export const RegisterLogic= async(req,res)=>{
     try {
@@ -105,11 +105,15 @@ if(!MatchPassword){
     });
     await existuser.save();
 
-    res.status(200).json({
-      message: "Login successful",
-      accessToken,
-      refreshToken,
-    });
+  res.status(200).json({
+  message: "Login successful",
+  accessToken, 
+  user: {
+    id: existuser._id,
+    name: existuser.name,
+    email: existuser.email,
+  },
+});
 
 
         
@@ -216,3 +220,4 @@ export const Getdetails = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
