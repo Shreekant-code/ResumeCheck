@@ -43,7 +43,7 @@ export const Signup = () => {
         res = await axiosInstance.post("/register", form, { withCredentials: true });
         enqueueSnackbar("Signup successful!", { variant: "success" });
       } else {
-        // Login API
+        
         res = await axiosInstance.post(
           "/login",
           { email: form.email, password: form.password },

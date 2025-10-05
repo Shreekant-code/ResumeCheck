@@ -5,7 +5,7 @@ const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
-  const API_BASE_URL = "http://localhost:3000";
+  const API_BASE_URL = "https://resumecheck-1.onrender.com";
 
 
   useEffect(() => {
