@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 
 dotenv.config();
+const PORT=process.env.PORT;
 
 const app = express();
 
@@ -21,6 +22,6 @@ app.use(cookieParser());
 await dbconnect();
 app.use("/", router);
 
-app.listen(3000, () => {
+app.listen(PORT, () => {
     console.log("The server is running on 3000");
 });
