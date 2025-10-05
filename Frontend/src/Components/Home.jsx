@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { useAuth } from "../Context/Authtoken"; // adjust path
+import { useAuth } from "../Context/Authtoken"; 
 import { Modalpop } from "../Context/Modalpopup";
 
 export const Home = () => {
@@ -83,7 +83,10 @@ export const Home = () => {
 
       {/* Upload Modal */}
       {showUploadModal && (
-       <Modalpop />
+     
+  <Modalpop onClose={() => setShowUploadModal(false)} />
+
+
           
       )}
     </>

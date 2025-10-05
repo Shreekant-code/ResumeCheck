@@ -123,12 +123,12 @@ if(!MatchPassword){
     }
 }
 
-
 export const Fileupload = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    const { position } = req.body;
+    if (!position) return res.status(400).json({ message: "Position is required" });
 
-   
     const uploadToCloudinary = (buffer) =>
       new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
@@ -138,86 +138,77 @@ export const Fileupload = async (req, res) => {
         stream.end(buffer);
       });
 
-    let uploadResult;
-    try {
-      uploadResult = await uploadToCloudinary(req.file.buffer);
-    } catch (err) {
-      console.error("Cloudinary upload error:", err);
-      return res.status(500).json({ message: "Failed to upload resume" });
-    }
+    const uploadResult = await uploadToCloudinary(req.file.buffer);
 
   
-    let extractedText;
-    try {
-      extractedText = await new Promise((resolve, reject) => {
-        textract.fromBufferWithMime(req.file.mimetype, req.file.buffer, (err, text) => {
-          if (err) reject(err);
-          else resolve(text.trim());
-        });
-      });
-    } catch (err) {
-      console.error("Text extraction error:", err);
-      return res.status(500).json({ message: "Failed to extract text from resume" });
-    }
+    const extractedText = await new Promise((resolve, reject) => {
+      textract.fromBufferWithMime(req.file.mimetype, req.file.buffer, (err, text) =>
+        err ? reject(err) : resolve(text.trim())
+      );
+    });
+
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const { position } = req.body;
-    if (!position) return res.status(400).json({ message: "Position is required" });
-
-   
+    // Analyze resume using AI
     const aiData = await analyzeResumeATS(extractedText, position);
 
-    
-    if (!user.resumes) user.resumes = [];
-    user.resumes.push({
+   
+    const newResume = {
       fileName: req.file.originalname,
       fileUrl: uploadResult.secure_url,
-      extractedText,
+      text: extractedText,
       email: aiData.email || null,
       phone: aiData.phone || null,
+      position,
       skills: aiData.skills || [],
-      experience: aiData.work_experience || aiData.experience || "",
+      experience: aiData.experience || "",
       education: aiData.education || "",
       strengths: aiData.strengths || [],
       weaknesses: aiData.weaknesses || [],
       atsScore: aiData.atsScore || 0,
+      skillsMatchPercentage: aiData.skillsMatchPercentage || 0,
+      weaknessPercentage: aiData.weaknessPercentage || 0,
+      overallScore: aiData.overallScore || 0,
       suggestions: aiData.suggestions || [],
-      position,
-      youtubelink: aiData.youtubelink || [],
-      createdAt: new Date(),
-    });
+      youtubeLinks: aiData.youtubeLinks || [],
+      analyzedAt: new Date(),
+    };
 
+    user.resumes.push(newResume);
     await user.save();
 
     res.status(200).json({
       message: "Resume uploaded and analyzed successfully",
-      resume: user.resumes[user.resumes.length - 1],
+      resume: newResume
     });
+
   } catch (error) {
     console.error("File upload error:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-   
+
 export const Getdetails = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
 
-    if (!user || !user.resumes || user.resumes.length === 0) 
-      return res.status(404).json({ message: "No resumes found" });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user.resumes || user.resumes.length === 0)
+      return res.status(404).json({ message: "No resumes uploaded yet" });
 
-    const latestResume = user.resumes[user.resumes.length - 1]; // last uploaded
+    const latestResume = user.resumes[user.resumes.length - 1];
 
+   
     res.status(200).json({
       message: "Latest resume fetched successfully",
-      resume: latestResume,
+      resume: latestResume
     });
+
   } catch (error) {
-    console.error("Error fetching user details:", error);
+    console.error("Error fetching resume:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
-

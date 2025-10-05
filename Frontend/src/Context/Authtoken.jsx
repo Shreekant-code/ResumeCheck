@@ -7,7 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [accessToken, setAccessToken] = useState(null);
   const API_BASE_URL = "http://localhost:3000";
 
-  // Refresh token on app load
+
   useEffect(() => {
     const refreshAccessToken = async () => {
       try {

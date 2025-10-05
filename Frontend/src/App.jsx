@@ -6,13 +6,13 @@ import { Analysis } from "./Pages/Analysis";
 
 const App = () => {
   return (
-    <AuthProvider>
+  
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/analysis" element={<Analysis />}/>
       </Routes>
-    </AuthProvider>
+   
   );
 };
 

@@ -31,9 +31,9 @@ export const Modalpop = ({ onClose }) => {
 formData.append("position", position);
 
 
-      // POST to /profile with token from axiosInstance
+     
       const res = await axiosInstance.post("/profile", formData, {
-        withCredentials: true, // sends refresh token cookie
+        withCredentials: true, 
       });
 
       enqueueSnackbar(res.data.message || "Resume uploaded successfully!", {
@@ -59,7 +59,7 @@ formData.append("position", position);
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50 p-4">
       <div className="bg-gray-900 rounded-2xl w-full max-w-md p-6 shadow-xl relative">
-        {/* Close button */}
+       
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-400 hover:text-white"
@@ -80,7 +80,7 @@ formData.append("position", position);
           className="w-full bg-gray-800 text-white px-4 py-2 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-400"
         />
 
-        {/* File input */}
+       
         <label className="flex flex-col items-center justify-center w-full py-6 border-2 border-dashed border-gray-600 rounded-xl cursor-pointer hover:border-indigo-500 transition-colors mb-4">
           <FaUpload className="text-gray-400 mb-2" size={24} />
           <span className="text-gray-400 text-sm">
@@ -89,7 +89,7 @@ formData.append("position", position);
           <input type="file" className="hidden" onChange={handleFileChange} />
         </label>
 
-        {/* Upload button */}
+   
         <button
           onClick={handleUpload}
           disabled={loading}
