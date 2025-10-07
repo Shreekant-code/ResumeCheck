@@ -21,7 +21,7 @@ import {
 import { FaReact, FaNodeJs, FaHtml5, FaCss3Alt, FaJsSquare, FaPython } from "react-icons/fa";
 import { SiMongodb, SiRedux, SiTailwindcss } from "react-icons/si";
 
-const COLORS = ["#6366F1", "#EF4444", "#FBBF24"]; 
+const COLORS = ["#6366F1", "#EF4444", "#FBBF24", "#22C55E"]; // Added green for new metric
 
 export const Analysis = () => {
   const { axiosInstance } = useAuth();
@@ -73,10 +73,12 @@ export const Analysis = () => {
     );
   }
 
+ 
   const metrics = [
     { name: "ATS Score", value: resume.atsScore, color: COLORS[0] },
     { name: "Weaknesses", value: Math.min(resume.weaknesses.length * 10, 100), color: COLORS[1] },
-    { name: "Overall", value: resume.overallScore, color: COLORS[2] }
+    { name: "Overall", value: resume.overallScore, color: COLORS[2] },
+    { name: "Skills Match", value: resume.skillsMatchPercentage || 0, color: COLORS[3] } // 🟢 new metric
   ];
 
   const renderDonut = (data) => (
@@ -121,7 +123,7 @@ export const Analysis = () => {
           </div>
         </div>
 
-       
+        {/* Education + Experience */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-200">
           <div className="bg-gray-800 p-4 rounded-xl flex flex-col gap-2">
             <span className="text-indigo-400 font-semibold flex items-center gap-2"><FaGraduationCap /> Education:</span>
@@ -137,19 +139,26 @@ export const Analysis = () => {
         {resume.youtubeLinks?.length > 0 && (
           <div className="bg-gray-800 p-4 rounded-xl flex flex-col gap-2">
             <h3 className="text-indigo-400 font-semibold mb-2">Suggested Video for this Resume</h3>
-            <div className="flex flex-wrap gap-4">
-              {resume.youtubeLinks.map((link, idx) => (
-                <a key={idx} href={link} target="_blank" rel="noopener noreferrer"
-                   className="flex items-center gap-2 text-red-500 hover:text-red-400 transition-colors">
-                  <FaYoutube /> {link.split('/').pop()}
-                </a>
-              ))}
-            </div>
+           <div className="flex flex-wrap gap-3">
+  {resume.youtubeLinks.map((link, idx) => (
+    <a
+      key={idx}
+      href={link}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 text-red-500 hover:text-red-400 transition-colors max-w-full break-all bg-gray-900/40 px-3 py-2 rounded-lg"
+    >
+      <FaYoutube className="flex-shrink-0" />
+      <span className="truncate sm:whitespace-normal">{link}</span>
+    </a>
+  ))}
+</div>
+
           </div>
         )}
 
         {/* Donut Charts */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {metrics.map((metric, idx) => (
             <div key={idx} className="bg-gray-800 p-4 rounded-xl flex flex-col items-center justify-center relative">
               {renderDonut(metric)}
@@ -161,7 +170,7 @@ export const Analysis = () => {
           ))}
         </div>
 
-        {/* Skills, Strengths, Weaknesses */}
+       
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-gray-800 p-4 rounded-xl">
             <h3 className="text-indigo-400 font-semibold mb-2">Skills</h3>
@@ -191,30 +200,30 @@ export const Analysis = () => {
           </div>
         </div>
 
-  {/* Suggestions */}
-{resume.suggestions?.length > 0 && (
-  <div className="bg-gray-900 p-6 rounded-3xl">
-    <h3 className="text-indigo-400 font-bold mb-6 text-xl flex items-center gap-3">
-      💡 Suggestions for Improvement
-    </h3>
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      {resume.suggestions.map((s, idx) => (
-        <div
-          key={idx}
-          className="bg-gray-800 p-5 rounded-2xl shadow-lg border border-gray-700 hover:shadow-indigo-500/50 transition-shadow duration-300 cursor-pointer"
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-indigo-400 text-2xl animate-pulse">💫</span>
-            <h4 className="text-white font-semibold text-base tracking-wide">
-              Suggestion #{idx + 1}
-            </h4>
+        
+        {resume.suggestions?.length > 0 && (
+          <div className="bg-gray-900 p-6 rounded-3xl">
+            <h3 className="text-indigo-400 font-bold mb-6 text-xl flex items-center gap-3">
+              💡 Suggestions for Improvement
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {resume.suggestions.map((s, idx) => (
+                <div
+                  key={idx}
+                  className="bg-gray-800 p-5 rounded-2xl shadow-lg border border-gray-700 hover:shadow-indigo-500/50 transition-shadow duration-300 cursor-pointer"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-indigo-400 text-2xl animate-pulse">💫</span>
+                    <h4 className="text-white font-semibold text-base tracking-wide">
+                      Suggestion #{idx + 1}
+                    </h4>
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed">{s}</p>
+                </div>
+              ))}
+            </div>
           </div>
-          <p className="text-gray-300 text-sm leading-relaxed">{s}</p>
-        </div>
-      ))}
-    </div>
-  </div>
-)} 
+        )}
       </div>
     </div>
   );
